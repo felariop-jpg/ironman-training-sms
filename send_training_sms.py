@@ -144,7 +144,7 @@ rate, sleep performance, daily strain, and individual workouts (sport, duration,
 strain, heart rate):
 {json.dumps(whoop_data, indent=2)}
 
-Write a short morning text (under 500 characters) that:
+Write a short morning text that:
 - Tells me plainly what today should look like: a specific workout type, intensity, and
   duration, or explicit rest, based on my recent training load (from strain and workouts)
   and recovery/HRV/sleep trend.
@@ -155,11 +155,16 @@ Write a short morning text (under 500 characters) that:
   haven't already trained.
 - If there's a specific race-week task worth flagging (gear check, nutrition rehearsal,
   course familiarization, travel logistics) given how many days out I am, mention it in
-  one line.
+  a few words, only if there's room.
 - Sound like a real coach who knows my data, not a generic fitness app notification.
 - This is training guidance based on data trends, not medical advice. If something looks
   like a real red flag (resting HR spiking hard, recovery cratering multiple days running),
   say so plainly and suggest checking in with a doctor rather than prescribing a fix.
+
+HARD CONSTRAINT: the message must be 150 characters or fewer, total, including spaces
+and punctuation. This is a strict SMS length limit, not a suggestion. Plain ASCII text
+only, no emojis, no smart quotes/curly apostrophes, no em dashes, no markdown. Prioritize
+the single most important thing I need to know today over completeness.
 
 No preamble, just the text message itself."""
 
@@ -181,7 +186,13 @@ def generate_message(whoop_data: dict, days_out: int) -> str:
     )
     resp.raise_for_status()
     data = resp.json()
-    return "".join(b["text"] for b in data["content"] if b.get("type") == "text").strip()
+    message = "".join(b["text"] for b in data["content"] if b.get("type") == "text").strip()
+
+    # Safety net: force single-segment length even if the model runs slightly over.
+    if len(message) > 150:
+        message = message[:147].rstrip() + "..."
+
+    return message
 
 
 # ---------------- Twilio ----------------
